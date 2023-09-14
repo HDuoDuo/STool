@@ -17,8 +17,8 @@ RUN apk add --no-cache libffi-dev \
 ENV LANG="C.UTF-8" \
     TZ="Asia/Shanghai" \
     NASTOOL_CONFIG="/config/config.yaml" \
-    NASTOOL_AUTO_UPDATE=true \
-    NASTOOL_CN_UPDATE=true \
+    NASTOOL_AUTO_UPDATE=false \
+    NASTOOL_CN_UPDATE=false \
     NASTOOL_VERSION=master \
     PS1="\u@\h:\w \$ " \
     REPO_URL="https://github.com/HDuoDuo/sourcetool.git" \
@@ -26,7 +26,7 @@ ENV LANG="C.UTF-8" \
     ALPINE_MIRROR="mirrors.ustc.edu.cn" \
     PUID=0 \
     PGID=0 \
-    UMASK=000 \
+    UMASK=022 \
     WORKDIR="/nas-tools"
 WORKDIR ${WORKDIR}
 RUN python_ver=$(python3 -V | awk '{print $2}') \
