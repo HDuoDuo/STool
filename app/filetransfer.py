@@ -369,7 +369,7 @@ class FileTransfer:
         # 计算目录目录
         parent_name = os.path.basename(os.path.dirname(file_item))
         target_dir = os.path.join(target_dir, parent_name)
-        if not os.path.exists(target_dir):
+        if not os.path.exists(target_dir) and rmt_mode not in [RmtMode.RCLONE, RmtMode.RCLONECOPY]:
             log.debug("【Rmt】正在创建目录：%s" % target_dir)
             os.makedirs(target_dir)
         # 目录
@@ -637,7 +637,7 @@ class FileTransfer:
                     if error_message not in alert_messages:
                         alert_messages.append(error_message)
                     continue
-                if dist_path and not os.path.exists(dist_path):
+                if dist_path and not os.path.exists(dist_path) and rmt_mode not in [RmtMode.RCLONE, RmtMode.RCLONECOPY]:
                     return __finish_transfer(False, "目录不存在：%s" % dist_path)
 
                 # 判断文件是否已存在，返回：目录存在标志、目录名、文件存在标志、文件名
@@ -708,8 +708,8 @@ class FileTransfer:
                         if error_message not in alert_messages and is_need_insert_unknown:
                             alert_messages.append(error_message)
                         continue
-                    else:
-                        # 创建电录
+                    elif rmt_mode not in [RmtMode.RCLONE, RmtMode.RCLONECOPY]:
+                        # 创建目录
                         log.debug("【Rmt】正在创建目录：%s" % ret_dir_path)
                         os.makedirs(ret_dir_path)
                 # 转移蓝光原盘
@@ -849,7 +849,7 @@ class FileTransfer:
             self.message.send_transfer_fail_message(in_path, alert_count, "、".join(alert_messages))
         elif failed_count == 0:
             # 删除空目录
-            if rmt_mode == RmtMode.MOVE \
+            if rmt_mode in [RmtMode.MOVE ,RmtMode.RCLONE] \
                     and os.path.exists(in_path) \
                     and os.path.isdir(in_path) \
                     and not root_path \
@@ -890,6 +890,29 @@ class FileTransfer:
                                                rmt_mode=rmt_mode)
             if not ret:
                 print("【Rmt】%s 处理失败：%s" % (path, ret_msg))
+
+    # transfer to cloud from playlist for PMS
+    def transfer_plex_playlist(self):
+        playlistname = Config().get_config('plex').get('playListName')
+        dest_path = Config().get_config('plex').get('move_path')
+        noscrapy_path = Config().get_config('plex').get('noscrapy_path')
+        noscrapy_path = noscrapy_path if noscrapy_path else (dest_path + '/noscrapy')
+        move_mode = ModuleConf.RMT_MODES.get(Config().get_config('plex').get('move_mode', 'rclonecopy'), RmtMode.RCLONECOPY)
+        if playlistname and dest_path:
+            pathDict = MediaServer().get_paths_from_mediaserver(playlistname)
+            itemCount = len(pathDict)
+            for source_path in pathDict.keys():
+                itemCount -= 1
+                ret, ret_msg = self.transfer_media(in_from=SyncType.MON,
+                                               in_path=source_path,
+                                               target_dir=dest_path,
+                                               unknown_dir=noscrapy_path,
+                                               rmt_mode=move_mode)
+                if ret or '无法识别媒体信息' in ret_msg:
+                    MediaServer().delete_item(pathDict[source_path])
+                if not itemCount:
+                    sleep(300)
+                    MediaServer().update_section(pathDict[source_path])
 
     def __is_media_exists(self,
                           media_dest,

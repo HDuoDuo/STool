@@ -1,13 +1,12 @@
-name: Build NAStool Image
+name: Build Stool Image
 on:
   workflow_dispatch:
   push:
     branches:
-      - master
+      - pms
     paths:
       - version.py
       - docker/Dockerfile
-      - docker/Dockerfile.lite
       - .github/workflows/build.yml
       - requirements.txt
 jobs:
@@ -50,5 +49,5 @@ jobs:
             linux/amd64
           push: true
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/sourcetool:latest
-            ${{ secrets.DOCKER_USERNAME }}/sourcetool:${{ env.app_version }}
+            ${{ secrets.DOCKER_USERNAME }}/stool:latest
+            ${{ secrets.DOCKER_USERNAME }}/stool:${{ env.app_version }}

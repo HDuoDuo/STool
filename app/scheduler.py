@@ -22,6 +22,7 @@ from config import PT_TRANSFER_INTERVAL, METAINFO_SAVE_INTERVAL, \
     RSS_REFRESH_TMDB_INTERVAL, META_DELETE_UNKNOWN_INTERVAL, REFRESH_WALLPAPER_INTERVAL, Config
 from web.backend.wallpaper import get_login_wallpaper
 
+from app.filetransfer import FileTransfer
 
 @singleton
 class Scheduler:
@@ -105,6 +106,18 @@ class Scheduler:
             if pt_monitor:
                 self.SCHEDULER.add_job(Downloader().transfer, 'interval', seconds=PT_TRANSFER_INTERVAL)
                 log.info("下载文件转移服务启动")
+
+            # 收藏文件转移,默认运行时间01:01
+            transfer_plex_cron = str(Config().get_config('plex').get('transfer_plex_cron'))
+            if transfer_plex_cron and transfer_plex_cron.find(':') != -1:
+                try:
+                    hour = int(transfer_plex_cron.split(":")[0])
+                    minute = int(transfer_plex_cron.split(":")[1])
+                except Exception as e:
+                    log.info("plex列表文件转移 时间配置格式错误：%s" % str(e))
+                    hour = minute = 1
+                self.SCHEDULER.add_job(FileTransfer().transfer_plex_playlist, 'cron', hour=hour, minute=minute)
+                log.info("plex列表文件转移服务启动")
 
             # RSS下载器
             pt_check_interval = self._pt.get('pt_check_interval')

@@ -100,7 +100,7 @@ class Sync(object):
                     continue
                 if only_link:
                     log.info("【Sync】%s 不进行识别和重命名" % monpath)
-                if target_path and not os.path.exists(target_path):
+                if target_path and not os.path.exists(target_path) and path_syncmode not in [ModuleConf.RMT_MODES.get('rclone'), ModuleConf.RMT_MODES.get('rclonecopy')]:
                     log.info("【Sync】目的目录不存在，正在创建：%s" % target_path)
                     os.makedirs(target_path)
                 if unknown_path and not os.path.exists(unknown_path):

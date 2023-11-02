@@ -209,6 +209,46 @@ class Plex(_IMediaClient):
             ExceptionUtils.exception_traceback(err)
         yield {}
 
+    def get_paths_from_server(self, name):
+        """
+        通过列表名称获取列表中的items
+        """
+        if not self._plex:
+            return {}
+        try:
+            playlist = self._plex.playlist(title=name)
+            pathDict = {}
+            for item in playlist.items():
+                # 获取当前item所在库的section路径
+                # sectionPath = item.section().locations[0]
+                itemPath = item.locations[0]
+                itemSplit = item.locations[0].split("/")
+                itemSplit = itemSplit[4:]
+                itemPath = "/media/" + "/".join(itemSplit)
+                pathDict[itemPath] = item
+            return pathDict       
+        except Exception as err:
+            ExceptionUtils.exception_traceback(err)
+        return {}
+
+    def delete_by_item(self, item):
+        """
+        删除item
+        """
+        try:
+            item.delete()
+        except Exception as err:
+            ExceptionUtils.exception_traceback(err)
+
+    def update_by_item(self, item):
+        """
+        更新item所在section
+        """
+        try:
+            item.section().update()
+        except Exception as err:
+            ExceptionUtils.exception_traceback(err)
+
     def get_playing_sessions(self):
         """
         获取正在播放的会话
