@@ -1185,7 +1185,7 @@ class FileTransfer:
         else:
             new_file = new_file_list[0]
         new_dir = os.path.dirname(new_file)
-        if not os.path.exists(new_dir):
+        if not os.path.exists(new_dir) and sync_transfer_mode not in [RmtMode.RCLONE, RmtMode.RCLONECOPY]:
             os.makedirs(new_dir)
         return self.__transfer_command(file_item=in_file,
                                        target_file=new_file,
