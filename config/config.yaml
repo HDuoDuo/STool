@@ -120,6 +120,16 @@ plex:
   username:
   # 【Plex用户密码】
   password:
+  # 【列表名称-列表定时转移时间-列表云盘存放路径】
+  playListName: 
+  transfer_plex_cron: 1:01
+  move_path: 
+  # 【未识别云盘路径（可选），默认'[move_path]/noscrapy'】
+  noscrapy_path:
+  # 【转移模式】link、copy、softlink、move、rclone、rclonecopy、minio、miniocopy(默认)，详情参考顶部说明
+  move_mode: rclonecopy
+  # 【pt路径关键字，移动删除文件的时候排除正在做种的文件】
+  pt_path_key: 'pt'
 
 # 【配置nfo刮削信息】
 scraper_nfo:
@@ -211,6 +221,11 @@ pt:
   download_order: site
   # 【搜索结果数量限制】：每个站点返回搜索结果的最大数量
   site_search_result_num: 100
+
+# 【站点名称】
+mayi:
+  # 【可配置站点分享率达到某值时停止刷流下载，当分享率值小于该值时又继续下载】
+  pt_ratio_limit: 5
 
 # 【配置Jackett检索器】
 jackett:

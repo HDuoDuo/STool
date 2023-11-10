@@ -853,9 +853,8 @@ class FileTransfer:
                     and os.path.exists(in_path) \
                     and os.path.isdir(in_path) \
                     and not root_path \
-                    and not PathUtils.get_dir_files(in_path=in_path, exts=RMT_MEDIAEXT) \
-                    and not PathUtils.get_dir_files(in_path=in_path, exts=['.!qb', '.part']):
-                log.info("【Rmt】目录下已无媒体文件及正在下载的文件，移动模式下删除目录：%s" % in_path)
+                    and not PathUtils.get_dir_files(in_path=in_path, exts=(RMT_MEDIAEXT + ['.!qb', '.part'])):
+                # log.info("【Rmt】目录下已无媒体文件及正在下载的文件，移动模式下删除目录：%s" % in_path)
                 shutil.rmtree(in_path)
         return __finish_transfer(success_flag, error_message)
 
@@ -898,6 +897,7 @@ class FileTransfer:
         noscrapy_path = Config().get_config('plex').get('noscrapy_path')
         noscrapy_path = noscrapy_path if noscrapy_path else (dest_path + '/noscrapy')
         move_mode = ModuleConf.RMT_MODES.get(Config().get_config('plex').get('move_mode', 'rclonecopy'), RmtMode.RCLONECOPY)
+        pt_path_key = Config().get_config('plex').get('pt_path_key', 'pt')
         if playlistname and dest_path:
             pathDict = MediaServer().get_paths_from_mediaserver(playlistname)
             itemCount = len(pathDict)
@@ -908,8 +908,10 @@ class FileTransfer:
                                                target_dir=dest_path,
                                                unknown_dir=noscrapy_path,
                                                rmt_mode=move_mode)
-                if ret or '无法识别媒体信息' in ret_msg:
+                if (ret or '无法识别媒体信息' in ret_msg) and source_path.find(pt_path_key) == -1:
                     MediaServer().delete_item(pathDict[source_path])
+                    if not PathUtils.get_dir_files(in_path=os.path.dirname(source_path), exts=(RMT_MEDIAEXT + ['.!qb', '.part'])):
+                        shutil.rmtree(os.path.dirname(source_path))
                 if not itemCount:
                     sleep(300)
                     MediaServer().update_section(pathDict[source_path])
@@ -1187,9 +1189,16 @@ class FileTransfer:
         new_dir = os.path.dirname(new_file)
         if not os.path.exists(new_dir) and sync_transfer_mode not in [RmtMode.RCLONE, RmtMode.RCLONECOPY]:
             os.makedirs(new_dir)
-        return self.__transfer_command(file_item=in_file,
+        ret =  self.__transfer_command(file_item=in_file,
                                        target_file=new_file,
-                                       rmt_mode=sync_transfer_mode), ""
+                                       rmt_mode=sync_transfer_mode)
+        # 删除空目录
+        if ret == 0 and sync_transfer_mode in [RmtMode.MOVE ,RmtMode.RCLONE]:
+            for path in PathUtils.get_dir_level1_medias(in_path=src_path):
+                if os.path.isdir(path) and not PathUtils.get_dir_files(in_path=path):
+                    # log.info("【Rmt】移动模式下删除同步目录下的空文件夹")
+                    shutil.rmtree(path)
+        return ret, ""
 
     def get_format_dict(self, media):
         """

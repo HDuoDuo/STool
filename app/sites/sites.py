@@ -158,6 +158,9 @@ class Sites:
             return {}
         return ret_sites
 
+    def get_sites_data():
+        return self._sites_data
+
     def get_site_dict(self,
                       rss=False,
                       brush=False,
