@@ -76,6 +76,7 @@ class Plex(_IMediaClient):
         """
         获取Plex活动记录
         """
+        return []
         if not self._plex:
             return []
         ret_array = []
