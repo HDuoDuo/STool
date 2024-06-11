@@ -31,6 +31,7 @@ class BrushTask(object):
     _downloader_infos = []
     _qb_client = "qbittorrent"
     _tr_client = "transmission"
+    _ratio_limit = {}
 
     def __init__(self):
         self.init_config()
@@ -161,10 +162,14 @@ class BrushTask(object):
         if not site_info:
             log.error("【Brush】刷流任务 %s 的站点已不存在，无法刷流！" % task_name)
             return
+
         site_name = site_info.get("name")
-        if self.__check_stop_by_ratio(site_name):
+        site_ratio_limit = self.sites.ratio_beyong(site_name)
+        self._ratio_limit.update({site_name: site_ratio_limit})
+        if site_ratio_limit:
             # log.info("【Brush】站点 %s 分享率达到阀值，暂停刷流！" % site_name)
             return
+
         site_proxy = site_info.get("proxy")
 
         if not rss_url:
@@ -282,7 +287,7 @@ class BrushTask(object):
                 continue
             # 分享率达到阀值时已停止刷流，就可以停止删种
             site_name = taskinfo.get("site")
-            if self.__check_stop_by_ratio(site_name):
+            if self._ratio_limit.get(site_name):
                 # log.info("【Brush】站点 %s 分享率达到阀值，暂停删种！" % site_name)
                 continue
             try:
@@ -496,14 +501,6 @@ class BrushTask(object):
                                                          remove_count=len(delete_ids) + len(remove_torrent_ids))
             except Exception as e:
                 ExceptionUtils.exception_traceback(e)
-
-    def __check_stop_by_ratio(self, sitename):
-        site_data = self.sites.get_sites_data().get(sitename)
-        ratio_limit = ("%.3f" % float(Config().get_config(sitename).get('pt_ratio_limit', 0)))
-        current_ratio = ("%.3f" % float(site_data.get("ratio", 0)))
-        if ratio_limit and  current_ratio > ratio_limit:
-            return True
-        return False
 
     def __is_allow_new_torrent(self, taskid, taskname, downloadercfg, seedsize, dlcount):
         """

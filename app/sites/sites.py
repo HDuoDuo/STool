@@ -158,8 +158,18 @@ class Sites:
             return {}
         return ret_sites
 
-    def get_sites_data():
-        return self._sites_data
+    def ratio_beyong(self, site_name):
+        """
+        站点是否超出分享率限制
+        """
+        if not self._sites_data.get(site_name):
+            self.get_pt_date(specify_sites=[site_name], force=True)
+        site_ratio = ("%.3f" % float(self._sites_data.get(site_name, []).get('ratio', 0)))
+        limit_ratio = ("%.3f" % float(Config().get_config(site_name).get('pt_ratio_limit', 0)))
+        if site_ratio and limit_ratio:
+            if site_ratio > limit_ratio:
+                return True
+        return False
 
     def get_site_dict(self,
                       rss=False,
@@ -297,9 +307,6 @@ class Sites:
                     self._sites_data.update({site_name: {"err_msg": site_user_info.err_msg}})
                     return
 
-                # 发送通知，存在未读消息
-                self.__notify_unread_msg(site_name, site_user_info, unread_msg_notify)
-
                 self._sites_data.update({site_name: {
                     "upload": site_user_info.upload,
                     "username": site_user_info.username,
@@ -315,6 +322,9 @@ class Sites:
                     "err_msg": site_user_info.err_msg,
                     "message_unread": site_user_info.message_unread}
                 })
+
+                # 发送通知，存在未读消息
+                self.__notify_unread_msg(site_name, site_user_info, unread_msg_notify)
 
                 return site_user_info
 
