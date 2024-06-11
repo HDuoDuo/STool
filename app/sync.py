@@ -205,6 +205,7 @@ class Sync(object):
                     elif not msg:
                         self.dbhelper.insert_sync_history(event_path, monitor_dir, target_path)
                         log.info("【Sync】%s 同步完成" % event_path)
+                        self.container_cmd()
                 # 识别转移
                 else:
                     # 不是媒体文件不处理
@@ -224,6 +225,8 @@ class Sync(object):
                                                                         rmt_mode=sync_mode)
                         if not ret:
                             log.warn("【Sync】%s 转移失败：%s" % (event_path, ret_msg))
+                        else:
+                            self.container_cmd()
                     else:
                         try:
                             lock.acquire()
@@ -287,9 +290,18 @@ class Sync(object):
                                                                     root_path=is_root_path)
                     if not ret:
                         log.warn("【Sync】%s转移失败：%s" % (path, ret_msg))
+                    else:
+                        self.container_cmd()
                 self._need_sync_paths.pop(path)
         finally:
             lock.release()
+
+    @staticmethod
+    def container_cmd():
+        cmd = Config().get_config('sync').get('end_cmd')
+        if cmd:
+            os.system(cmd)
+            log.info("【Sync】sync end and docker cmd")
 
     def run_service(self):
         """
@@ -351,6 +363,7 @@ class Sync(object):
                     elif not msg:
                         self.dbhelper.insert_sync_history(link_file, monpath, target_path)
                         log.info("【Sync】%s 同步完成" % link_file)
+                        self.container_cmd()
             else:
                 for path in PathUtils.get_dir_level1_medias(monpath, RMT_MEDIAEXT):
                     if PathUtils.is_invalid_path(path):
@@ -362,6 +375,8 @@ class Sync(object):
                                                                     rmt_mode=sync_mode)
                     if not ret:
                         log.error("【Sync】%s 处理失败：%s" % (monpath, ret_msg))
+                    else:
+                        self.container_cmd()
 
 
 def run_monitor():
