@@ -169,9 +169,6 @@ class BrushTask(object):
         if site_ratio_limit:
             # log.info("【Brush】站点 %s 分享率达到阀值，暂停刷流！" % site_name)
             return
-
-        site_proxy = site_info.get("proxy")
-
         if not rss_url:
             log.error("【Brush】站点 %s 未配置RSS订阅地址，无法刷流！" % site_name)
             return
@@ -193,7 +190,8 @@ class BrushTask(object):
                                            dlcount=rss_rule.get("dlcount")):
             return
 
-        rss_result = Rss.parse_rssxml(rss_url)
+        site_proxy = site_info.get("proxy")
+        rss_result = Rss.parse_rssxml(rss_url, site_proxy)
         if len(rss_result) == 0:
             log.warn("【Brush】%s RSS未下载到数据" % site_name)
             return
