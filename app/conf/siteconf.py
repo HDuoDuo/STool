@@ -58,6 +58,12 @@ class SiteConf:
 
     # 检测种子促销的站点XPATH，不在此清单的无法开启仅RSS免费种子功能
     RSS_SITE_GRAP_CONF = {
+        'rousi.zip': {
+            "FREE":["//h1[@id='top']/b/font[@class='free']"],
+            "2XFREE":["//h1[@id='top']/b/font[@class='twoupfree']"],
+            "HR":[],
+            "PEER_COUNT":["//div[@id='peercount']/b[1]"]
+        },
         'jptv.club': {
             'FREE': ["//span/i[@class='fas fa-star text-gold']"],
             '2XFREE': [],
