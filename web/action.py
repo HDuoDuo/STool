@@ -162,6 +162,9 @@ class WebAction:
             "search_media_infos": self.search_media_infos,
             "get_movie_rss_list": self.get_movie_rss_list,
             "get_tv_rss_list": self.get_tv_rss_list,
+            "get_movie_rss_items": self.get_movie_rss_items,
+            "get_tv_rss_items": self.get_tv_rss_items,
+            "get_ical_events": self.get_ical_events,
             "get_rss_history": self.get_rss_history,
             "get_transfer_history": self.get_transfer_history,
             "get_unknown_list": self.get_unknown_list,
@@ -3676,6 +3679,68 @@ class WebAction:
         查询所有电视剧订阅
         """
         return {"code": 0, "result": Subscribe().get_subscribe_tvs()}
+    
+    @staticmethod
+    def get_movie_rss_items():
+        """
+        获取所有电影订阅项目
+        """
+        RssMovieItems = [
+            {
+                "id": movie.get("tmdbid"),
+                "rssid": movie.get("id")
+            } for movie in Subscribe().get_subscribe_movies().values() if movie.get("tmdbid")
+        ]
+        return {"code": 0, "result": RssMovieItems}
+
+    @staticmethod
+    def get_tv_rss_items():
+        """
+        获取所有电视剧订阅项目
+        """
+        # 电视剧订阅
+        RssTvItems = [
+            {
+                "id": tv.get("tmdbid"),
+                "rssid": tv.get("id"),
+                "season": int(str(tv.get('season')).replace("S", "")),
+                "name": tv.get("name"),
+            } for tv in Subscribe().get_subscribe_tvs().values() if tv.get('season') and tv.get("tmdbid")
+        ]
+        # 自定义订阅
+        RssTvItems += RssChecker().get_userrss_mediainfos()
+        # 电视剧订阅去重
+        Uniques = set()
+        UniqueTvItems = []
+        for item in RssTvItems:
+            unique = f"{item.get('id')}_{item.get('season')}"
+            if unique not in Uniques:
+                Uniques.add(unique)
+                UniqueTvItems.append(item)
+        return {"code": 0, "result": UniqueTvItems}
+
+    def get_ical_events(self):
+        """
+        获取ical日历事件
+        """
+        Events = []
+        # 电影订阅
+        RssMovieItems = self.get_movie_rss_items().get("result")
+        for movie in RssMovieItems:
+            info = self.__movie_calendar_data(movie)
+            if info.get("id"):
+                Events.append(info)
+
+        # 电视剧订阅
+        RssTvItems = self.get_tv_rss_items().get("result")
+        for tv in RssTvItems:
+            infos = self.__tv_calendar_data(tv).get("events")
+            if infos and isinstance(infos, list):
+                for info in infos:
+                    if info.get("id"):
+                        Events.append(info)
+
+        return {"code": 0, "result": Events}
 
     def get_rss_history(self, data):
         """
