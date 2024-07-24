@@ -1766,16 +1766,21 @@ def ical():
     remind = request.args.get("remind")
     cal = Calendar()
 
+    cal.add('PRODID', 'STOOL SUBSCRIBE')
     cal.add('VERSION','2.0')
     cal.add('CALSCALE', 'GREGORIAN')
     cal.add('METHOD', 'PUBLISH')
     cal.add('X-WR-CALNAME','STOOL')
     cal.add('X-WR-TIMEZONE','Asia/Shanghai')
+    cal.add('X-WR-CALDESC','Stool订阅的电影和电视剧')
 
     RssItems = WebAction().get_ical_events().get("result")
+    index = 0
     for item in RssItems:
         event = Event()
         event.add('summary', f'{item.get("type")}：{item.get("title")}')
+        index += 1
+        event.add('uid', item.get("title") + item.get("start") + item.get("id") + str(index))
         if item.get("poster"):
             event.add('description', f'{item.get("poster")}')
         if not item.get("start"):
@@ -1783,16 +1788,16 @@ def ical():
         event.add('dtstart',
                   datetime.datetime.strptime(item.get("start"),
                                              '%Y-%m-%d')
-                  + datetime.timedelta(hours=8))
+                  + datetime.timedelta(hours=9))
         event.add('dtend',
                   datetime.datetime.strptime(item.get("start"),
                                              '%Y-%m-%d')
-                  + datetime.timedelta(hours=9))
+                  + datetime.timedelta(hours=23))
 
         # 添加事件提醒
         if remind:
             alarm = Alarm()
-            alarm.add('trigger', datetime.timedelta(minutes=30))
+            alarm.add('trigger', datetime.timedelta(minutes=-5))
             alarm.add('action', 'DISPLAY')
             event.add_component(alarm)
 
