@@ -2722,6 +2722,7 @@ class WebAction:
             "exclude": data.get("exclude"),
             "filter_rule": data.get("rule"),
             "state": data.get("state"),
+            "proxy": data.get("proxy") or "N",
             "save_path": data.get("save_path"),
             "download_setting": data.get("download_setting"),
         }

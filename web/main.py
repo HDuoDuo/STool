@@ -1785,19 +1785,11 @@ def ical():
             event.add('description', f'{item.get("poster")}')
         if not item.get("start"):
             continue
-        event.add('dtstart',
-                  datetime.datetime.strptime(item.get("start"),
-                                             '%Y-%m-%d')
-                  + datetime.timedelta(hours=9))
-        event.add('dtend',
-                  datetime.datetime.strptime(item.get("start"),
-                                             '%Y-%m-%d')
-                  + datetime.timedelta(hours=23))
-
+        event.add('dtstart', datetime.datetime.strptime(item.get("start"),'%Y-%m-%d').date())
         # 添加事件提醒
         if remind:
             alarm = Alarm()
-            alarm.add('trigger', datetime.timedelta(minutes=-5))
+            alarm.add('trigger', datetime.timedelta(hours=9))
             alarm.add('action', 'DISPLAY')
             event.add_component(alarm)
 

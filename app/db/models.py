@@ -92,6 +92,7 @@ class CONFIGUSERRSS(Base):
     UPDATE_TIME = Column(Text)
     PROCESS_COUNT = Column(Text)
     STATE = Column(Text)
+    PROXY = Column(Text)
     SAVE_PATH = Column(Text)
     DOWNLOAD_SETTING = Column(Integer)
     RECOGNIZATION = Column(Text)

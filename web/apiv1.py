@@ -1231,6 +1231,7 @@ class RssUpdate(ClientResource):
     parser.add_argument('interval', type=int, help='刷新间隔（分钟）', location='form', required=True)
     parser.add_argument('uses', type=str, help='动作', location='form', required=True)
     parser.add_argument('state', type=str, help='状态（Y/N）', location='form', required=True)
+    parser.add_argument('proxy', type=str, help='是否使用代理（Y/N）', location='form')
     parser.add_argument('include', type=str, help='包含', location='form')
     parser.add_argument('exclude', type=str, help='排除', location='form')
     parser.add_argument('filterrule', type=int, help='过滤规则', location='form')

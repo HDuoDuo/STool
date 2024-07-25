@@ -219,13 +219,13 @@
       <div class="modal-body" style="overflow-x: hidden">
         <div id="userrss_common_div">
           <div class="row">
-            <div class="col-lg-4">
+            <div class="col-lg-3">
               <div class="mb-3">
                 <label class="form-label required">名称</label>
                 <input type="text" id="userrss_name" class="form-control" placeholder="别名">
               </div>
             </div>
-            <div class="col-lg-4">
+            <div class="col-lg-3">
               <div class="mb-3">
                 <label class="form-label required">状态</label>
                 <select class="form-select" id="userrss_state">
@@ -234,7 +234,16 @@
                 </select>
               </div>
             </div>
-            <div class="col-lg-4">
+            <div class="col-lg-3">
+              <div class="mb-3">
+                <label class="form-label">使用代理</label>
+                <select class="form-select" id="userrss_proxy">
+                  <option value="Y">是</option>
+                  <option value="N" selected>否</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-lg-3">
               <div class="mb-3">
                 <label class="form-label required">刷新间隔(分钟) <span class="form-help" title="检查RSS更新的间隔时间"
                     data-bs-toggle="tooltip">?</span></label>
@@ -630,6 +639,7 @@
     $("#userrss_address").val('');
     $("#userrss_parser").val('1');
     $("#userrss_state").val('N');
+    $("#userrss_proxy").val('N');
     show_userrss_uses('D');
     $("#modal-userrss").modal('show');
   }
@@ -648,6 +658,7 @@
       $("#userrss_address").val(detail.address);
       $("#userrss_parser").val(detail.parser);
       $("#userrss_state").val(detail.state);
+      $("#userrss_proxy").val(detail.proxy);
       show_userrss_uses(detail.uses);
       set_userrss_setting(detail)
       $("#modal-userrss").modal('show');
@@ -931,6 +942,7 @@
         $("#userrss_interval").val(detail.interval);
         $("#userrss_parser").val(detail.parser);
         $("#userrss_state").val(detail.state);
+        $("#userrss_proxy").val(detail.proxy);
         show_userrss_uses(detail.uses);
         set_userrss_setting(detail);
       }

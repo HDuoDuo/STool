@@ -110,6 +110,7 @@ class RssChecker(object):
                 "update_time": task.UPDATE_TIME,
                 "counter": task.PROCESS_COUNT,
                 "state": task.STATE,
+                "proxy": task.PROXY,
                 "save_path": task.SAVE_PATH or save_path,
                 "download_setting": task.DOWNLOAD_SETTING or "",
                 "recognization": task.RECOGNIZATION or recognization,
@@ -402,7 +403,7 @@ class RssChecker(object):
             rss_url = "%s?%s" % (rss_url, param_url) if rss_url.find("?") == -1 else "%s&%s" % (rss_url, param_url)
         # 请求数据
         try:
-            ret = RequestUtils().get_res(rss_url)
+            ret = RequestUtils(proxies=Config().get_proxies() if taskinfo.get("proxy")=="Y" else None).get_res(rss_url)
             if not ret:
                 return []
             ret.encoding = ret.apparent_encoding
