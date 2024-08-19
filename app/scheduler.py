@@ -15,7 +15,7 @@ from app.rss import Rss
 from app.sites import Sites
 from app.subscribe import Subscribe
 from app.sync import Sync
-from app.utils import ExceptionUtils
+from app.utils import ExceptionUtils, SystemUtils
 from app.utils.commons import singleton
 from config import PT_TRANSFER_INTERVAL, METAINFO_SAVE_INTERVAL, \
     SYNC_TRANSFER_INTERVAL, RSS_CHECK_INTERVAL, REFRESH_PT_DATA_INTERVAL, \
@@ -106,6 +106,22 @@ class Scheduler:
             if pt_monitor:
                 self.SCHEDULER.add_job(Downloader().transfer, 'interval', seconds=PT_TRANSFER_INTERVAL)
                 log.info("下载文件转移服务启动")
+
+            # 运行rclone来更新token防止使用时过期
+            rclone_refresh_cron = str(Config().get_config('app').get('rclone_refresh'))
+            if rclone_refresh_cron and rclone_refresh_cron.find('-') != -1:
+                try:
+                    day = int(rclone_refresh_cron.split("-")[0])
+                    hour = int(rclone_refresh_cron.split("-")[1])
+                    minute = int(rclone_refresh_cron.split("-")[2])
+                except Exception as e:
+                    log.info("rclone_refresh 时间配置格式错误：%s" % str(e))
+                    day = hour = minute = 1
+                if day:
+                    self.SCHEDULER.add_job(SystemUtils.rclone_refresh, 'cron', day=day, hour=hour, minute=minute)
+                else:
+                    self.SCHEDULER.add_job(SystemUtils.rclone_refresh, 'cron', hour=hour, minute=minute)
+                log.info("rclone定时刷新token服务启动")
 
             # 收藏文件转移,默认运行时间01:01
             transfer_plex_cron = str(Config().get_config('plex').get('transfer_plex_cron'))

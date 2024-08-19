@@ -187,6 +187,18 @@ class SystemUtils:
             return -1, str(err)
 
     @staticmethod
+    def rclone_refresh():
+        """
+        Rclone刷新
+        """
+        try:
+            retcode = subprocess.run(['rclone', 'lsd','NASTOOL:'],startupinfo=SystemUtils.__get_hidden_shell()).returncode
+            return retcode, ""
+        except Exception as err:
+            ExceptionUtils.exception_traceback(err)
+            return -1, str(err)
+
+    @staticmethod
     def rclone_move(src, dest):
         """
         Rclone移动
