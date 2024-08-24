@@ -1777,14 +1777,14 @@ def ical():
     RssItems = WebAction().get_ical_events().get("result")
     index = 0
     for item in RssItems:
+        if not item.get("start"):
+            continue
         event = Event()
         event.add('summary', f'{item.get("type")}：{item.get("title")}')
         index += 1
         event.add('uid', item.get("title") + item.get("start") + item.get("id") + str(index))
         if item.get("poster"):
             event.add('description', f'{item.get("poster")}')
-        if not item.get("start"):
-            continue
         event.add('dtstart', datetime.datetime.strptime(item.get("start"),'%Y-%m-%d').date())
         # 添加事件提醒
         if remind:
