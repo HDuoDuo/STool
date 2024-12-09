@@ -14,6 +14,7 @@ from app.filetransfer import FileTransfer
 from app.utils.commons import singleton
 from app.utils import PathUtils, ExceptionUtils
 from app.utils.types import SyncType, OsType
+from app.torrentremover import TorrentRemover
 
 lock = threading.Lock()
 
@@ -247,6 +248,7 @@ class Sync(object):
                                                                    'files': [event_path]}
                         finally:
                             lock.release()
+                            TorrentRemover().auto_remove_torrents()
             except Exception as e:
                 ExceptionUtils.exception_traceback(e)
                 log.error("【Sync】发生错误：%s - %s" % (str(e), traceback.format_exc()))

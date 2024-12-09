@@ -16,6 +16,8 @@ from app.utils import Torrent, StringUtils, SystemUtils, ExceptionUtils
 from app.utils.commons import singleton
 from app.utils.types import MediaType, DownloaderType, SearchType, RmtMode
 from config import Config, PT_TAG, RMT_MEDIAEXT
+from app.indexer import Indexer
+from app.utils.types import IndexerType
 
 lock = Lock()
 client_lock = Lock()
@@ -249,6 +251,14 @@ class Downloader:
                 download_label = download_info.get('label')
                 if not category:
                     category = download_label
+            # 公共BT站点torrent添加'public'标签
+            indexer_type = Indexer().get_client_type()
+            if indexer_type in [IndexerType.JACKETT,IndexerType.BUILTIN]:
+                indexerName = media_info.site
+                indexers = Indexer().get_indexers()
+                if indexerName in [indexer.name for indexer in indexers if indexer.public]:
+                    tags.append('PUBLIC')
+                    log.info("【Downloader】因%s为公共站点而添加PUBLIC标签" % indexerName)
             # 添加下载
             print_url = content if isinstance(content, str) else url
             if is_paused:
