@@ -73,7 +73,6 @@ class Media:
                 self._rmt_match_mode = MatchMode.STRICT
             else:
                 self._rmt_match_mode = MatchMode.NORMAL
-        laboratory = Config().get_config('laboratory')
         if laboratory:
             self._search_keyword = laboratory.get("search_keyword")
             self._search_tmdbweb = laboratory.get("search_tmdbweb")
