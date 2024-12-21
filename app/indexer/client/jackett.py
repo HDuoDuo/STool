@@ -1,11 +1,12 @@
 import requests
 
 from app.utils import ExceptionUtils
-from app.utils.types import IndexerType
+from app.utils.types import IndexerType, SearchType
 from config import Config
 from app.indexer.client._base import _IIndexClient
 from app.utils import RequestUtils
 from app.helper import IndexerConf
+from app.indexer.client.builtin import BuiltinIndexer
 
 
 class Jackett(_IIndexClient):
@@ -13,9 +14,11 @@ class Jackett(_IIndexClient):
     _client_config = {}
     index_type = IndexerType.JACKETT.value
     _password = None
+    _builtin_client = None
 
     def __init__(self, config=None):
         super().__init__()
+        self._builtin_client = BuiltinIndexer()
         if config:
             self._client_config = config
         else:
@@ -68,10 +71,15 @@ class Jackett(_IIndexClient):
                                  "domain": f'{self.host}api/v2.0/indexers/{v["id"]}/results/torznab/',
                                  "public": True if v['type'] == 'public' else False,
                                  "builtin": False})
-                    for v in ret.json()]
+                    for v in ret.json()] + self._builtin_client.get_indexers(check=True)
         except Exception as e2:
             ExceptionUtils.exception_traceback(e2)
             return []
 
-    def search(self, *kwargs):
-        return super().search(*kwargs)
+    def search(self, order_seq,
+               indexer,
+               key_word,
+               filter_args: dict,
+               match_media,
+               in_from: SearchType):
+        return self._builtin_client.search(order_seq, indexer, key_word, filter_args, match_media, in_from) if indexer.builtin else super().search(order_seq, indexer, key_word, filter_args, match_media, in_from)

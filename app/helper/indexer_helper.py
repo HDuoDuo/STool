@@ -80,7 +80,7 @@ class IndexerConf(object):
         # 名称
         self.name = datas.get('name') if not name else name
         # 是否内置站点
-        self.builtin = builtin
+        self.builtin = datas.get('builtin') if datas.get('builtin') is not None else builtin
         # 域名
         self.domain = datas.get('domain')
         # 搜索
@@ -104,7 +104,7 @@ class IndexerConf(object):
         # 过滤规则
         self.rule = rule
         # 是否公开站点
-        self.public = public
+        self.public = datas.get('public') if public is None else public
         # 是否使用代理
         self.proxy = proxy
         # 仅支持的特定语种
