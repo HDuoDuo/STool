@@ -5,7 +5,7 @@ import re
 import shutil
 import traceback
 from enum import Enum
-from threading import Lock
+from threading import Lock, Timer
 from time import sleep
 
 import log
@@ -340,7 +340,7 @@ class FileTransfer:
                 log.warn("【Rmt】%s 文件已存在" % new_file)
                 continue
             new_dir = os.path.dirname(new_file)
-            if not os.path.exists(new_dir):
+            if not os.path.exists(new_dir) and rmt_mode not in [RmtMode.RCLONE, RmtMode.RCLONECOPY]:
                 os.makedirs(new_dir)
             retcode = self.__transfer_command(file_item=file,
                                               target_file=new_file,
@@ -893,28 +893,28 @@ class FileTransfer:
     # transfer to cloud from playlist for PMS
     def transfer_plex_playlist(self):
         playlistname = Config().get_config('plex').get('playListName')
-        dest_path = Config().get_config('plex').get('move_path')
-        noscrapy_path = Config().get_config('plex').get('noscrapy_path')
-        noscrapy_path = noscrapy_path if noscrapy_path else (dest_path + '/noscrapy')
-        move_mode = ModuleConf.RMT_MODES.get(Config().get_config('plex').get('move_mode', 'rclonecopy'), RmtMode.RCLONECOPY)
-        pt_path_key = Config().get_config('plex').get('pt_path_key', 'pt')
-        if playlistname and dest_path:
-            pathDict = MediaServer().get_paths_from_mediaserver(playlistname)
-            itemCount = len(pathDict)
-            for source_path in pathDict.keys():
-                itemCount -= 1
-                ret, ret_msg = self.transfer_media(in_from=SyncType.MON,
-                                               in_path=source_path,
-                                               target_dir=dest_path,
-                                               unknown_dir=noscrapy_path,
-                                               rmt_mode=move_mode)
-                if (ret or '无法识别媒体信息' in ret_msg) and source_path.find(pt_path_key) == -1:
-                    MediaServer().delete_item(pathDict[source_path])
-                    if not PathUtils.get_dir_files(in_path=os.path.dirname(source_path), exts=(RMT_MEDIAEXT + ['.!qb', '.part'])):
-                        shutil.rmtree(os.path.dirname(source_path))
-                if not itemCount:
-                    sleep(300)
-                    MediaServer().update_section(pathDict[source_path])
+        original_path = Config().get_config('plex').get('original_path')
+        container_path = Config().get_config('plex').get('container_path')
+        if playlistname and original_path and container_path:
+            move_mode = ModuleConf.RMT_MODES.get(Config().get_config('plex').get('move_mode', 'rclonecopy'), RmtMode.RCLONECOPY)
+            pt_path_key = Config().get_config('plex').get('pt_path_key', 'pt')
+            pathItems = MediaServer().get_pathItems(playlistname, original_path, container_path)
+            can_update = False
+            for source_path in pathItems:
+                if not os.path.exists(source_path):
+                    continue
+                dest_path = source_path.replace(container_path, "")
+                ret = self.__transfer_dir_files(source_path, dest_path, move_mode)
+                if not ret and pt_path_key not in source_path.split("/"):
+                    can_update = True
+                    MediaServer().delete_item(pathItems[source_path])
+                    min_filesize = int(Config().get_config('media').get('min_filesize')) or 100
+                    if os.path.isdir(source_path) and not PathUtils.get_dir_files(in_path=source_path, filesize=min_filesize, exts=(RMT_MEDIAEXT + ['.!qb', '.part'])):
+                        shutil.rmtree(source_path)
+            if can_update:
+                Timer(300, MediaServer().update_section_by_items, args=(pathItems.values())).start()
+        else:
+            log.error("Rmt】plex列表文件转移 列表名或映射路径未配置")
 
     def __is_media_exists(self,
                           media_dest,

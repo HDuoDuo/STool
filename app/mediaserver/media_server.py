@@ -152,23 +152,22 @@ class MediaServer:
         return self.server.get_libraries()
 
     # just for plex
-    def get_paths_from_mediaserver(self, playlistname):
+    def get_pathItems(self, playlistname, original_path, container_path):
         """
         通过列表名称获取items和路径字典
         """
+        pathItems = {}
         if self.server and self._server_type == MediaServerType.PLEX:
-            pathDict = self.server.get_paths_from_server(playlistname)
-            if pathDict:
-                return pathDict
-        return {}
+            pathItems = self.server.get_pathItems(playlistname, original_path, container_path)
+        return pathItems
     
     def delete_item(self, item):
         if self.server and self._server_type == MediaServerType.PLEX:
-            self.server.delete_by_item(item)
+            self.server.delete_item(item)
 
-    def update_section(self, item):
+    def update_section_by_items(self, items):
         if self.server and self._server_type == MediaServerType.PLEX:
-            self.server.update_by_item(item)
+            self.server.update_section_by_items(items)
 
     def get_items(self, parent):
         """

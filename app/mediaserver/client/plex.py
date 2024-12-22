@@ -1,7 +1,7 @@
 from app.utils import ExceptionUtils
 from app.utils.types import MediaServerType
 
-import log
+import log, os
 from config import Config
 from app.mediaserver.client._base import _IMediaClient
 from plexapi.myplex import MyPlexAccount
@@ -210,29 +210,29 @@ class Plex(_IMediaClient):
             ExceptionUtils.exception_traceback(err)
         yield {}
 
-    def get_paths_from_server(self, name):
+    def get_pathItems(self, name, original_path, container_path):
         """
         通过列表名称获取列表中的items
         """
-        if not self._plex:
-            return {}
-        try:
-            playlist = self._plex.playlist(title=name)
-            pathDict = {}
-            for item in playlist.items():
-                # 获取当前item所在库的section路径
-                # sectionPath = item.section().locations[0]
-                itemPath = item.locations[0]
-                itemSplit = item.locations[0].split("/")
-                itemSplit = itemSplit[4:]
-                itemPath = "/media/" + "/".join(itemSplit)
-                pathDict[itemPath] = item
-            return pathDict       
-        except Exception as err:
-            ExceptionUtils.exception_traceback(err)
-        return {}
+        pathDict = {}
+        if self._plex:
+            try:
+                playlist = self._plex.playlist(title=name)
+                for item in playlist.items():
+                    item_path = item.locations[0]
+                    item_container_path = item_path.replace(original_path, container_path)
+                    item_file_name = os.path.basename(item_container_path)
+                    item_parent_path = os.path.dirname(item_container_path)
+                    item_parent_name = os.path.basename(item_parent_path)
+                    if item_file_name.find(item_parent_name) != -1:
+                        pathDict[item_parent_path] = item
+                    else:
+                        pathDict[item_container_path] = item
+            except Exception as err:
+                ExceptionUtils.exception_traceback(err)
+        return pathDict
 
-    def delete_by_item(self, item):
+    def delete_item(self, item):
         """
         删除item
         """
@@ -241,12 +241,17 @@ class Plex(_IMediaClient):
         except Exception as err:
             ExceptionUtils.exception_traceback(err)
 
-    def update_by_item(self, item):
+    def update_section_by_items(self, items):
         """
         更新item所在section
         """
         try:
-            item.section().update()
+            updated_section = []
+            for item in items:
+                uuid = item.section().uuid
+                if uuid not in updated_section:
+                    item.section().update()
+                    updated_section.append(uuid)
         except Exception as err:
             ExceptionUtils.exception_traceback(err)
 
