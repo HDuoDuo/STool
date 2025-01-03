@@ -96,19 +96,16 @@ class Media:
                 return True
         return False
 
-    def __search_tmdb_allnames(self, mtype: MediaType, tmdb_id):
+    def __get_tmdb_allnames(self, mtype: MediaType, tmdb_info):
         """
-        检索tmdb中所有的标题和译名，用于名称匹配
+        从检索好的tmdb_info中获取所有的标题和译名
         :param mtype: 类型：电影、电视剧、动漫
         :param tmdb_id: TMDB的ID
         :return: 所有译名的清单
         """
-        if not mtype or not tmdb_id:
-            return {}, []
+        if not mtype or not tmdb_info:
+            return []
         ret_names = []
-        tmdb_info = self.get_tmdb_info(mtype=mtype, tmdbid=tmdb_id)
-        if not tmdb_info:
-            return tmdb_info, []
         if mtype == MediaType.MOVIE:
             alternative_titles = tmdb_info.get("alternative_titles", {}).get("titles", [])
             for alternative_title in alternative_titles:
@@ -131,6 +128,21 @@ class Media:
                 name = translation.get("data", {}).get("name")
                 if name and name not in ret_names:
                     ret_names.append(name)
+        return ret_names
+
+    def __search_tmdb_allnames(self, mtype: MediaType, tmdb_id):
+        """
+        检索tmdb中所有的标题和译名，用于名称匹配
+        :param mtype: 类型：电影、电视剧、动漫
+        :param tmdb_id: TMDB的ID
+        :return: 所有译名的清单
+        """
+        if not mtype or not tmdb_id:
+            return {}, []
+        tmdb_info = self.get_tmdb_info(mtype=mtype, tmdbid=tmdb_id)
+        if not tmdb_info:
+            return tmdb_info, []
+        ret_names = self.__get_tmdb_allnames(mtype, tmdb_info)
         return tmdb_info, ret_names
 
     def __search_tmdb(self, file_media_name,
@@ -499,10 +511,14 @@ class Media:
             tmdb_info = self.__get_tmdb_movie_detail(tmdbid, append_to_response)
             if tmdb_info:
                 tmdb_info['media_type'] = MediaType.MOVIE
+                # 把别名赋值到搜索词
+                tmdb_info['keyword'] = self.__get_tmdb_allnames(MediaType.MOVIE, tmdb_info)
         else:
             tmdb_info = self.__get_tmdb_tv_detail(tmdbid, append_to_response)
             if tmdb_info:
                 tmdb_info['media_type'] = MediaType.TV
+                # 把别名赋值到搜索词
+                tmdb_info['keyword'] = self.__get_tmdb_allnames(MediaType.TV, tmdb_info)
         if tmdb_info:
             # 转换genreid
             tmdb_info['genre_ids'] = self.__get_genre_ids_from_detail(tmdb_info.get('genres'))
@@ -528,7 +544,7 @@ class Media:
                     tmdb_info['name'] = cn_title
         return tmdb_info
 
-    def get_tmdb_infos(self, title, year=None, mtype: MediaType = None, page=1):
+    def get_tmdb_infos(self, title, year=None, mtype: MediaType = None, page=1, include_adult=False):
         """
         查询名称中有关键字的所有的TMDB信息并返回
         """
@@ -538,36 +554,36 @@ class Media:
         if not title:
             return []
         if not mtype and not year:
-            results = self.__search_multi_tmdbinfos(title)
+            results = self.__search_multi_tmdbinfos(title, include_adult=include_adult)
         else:
             if not mtype:
                 results = list(
-                    set(self.__search_movie_tmdbinfos(title, year)).union(set(self.__search_tv_tmdbinfos(title, year))))
+                    set(self.__search_movie_tmdbinfos(title, year, include_adult=include_adult)).union(set(self.__search_tv_tmdbinfos(title, year))))
                 # 组合结果的情况下要排序
                 results = sorted(results,
                                  key=lambda x: x.get("release_date") or x.get("first_air_date") or "0000-00-00",
                                  reverse=True)
             elif mtype == MediaType.MOVIE:
-                results = self.__search_movie_tmdbinfos(title, year)
+                results = self.__search_movie_tmdbinfos(title, year, include_adult=include_adult)
             else:
                 results = self.__search_tv_tmdbinfos(title, year)
         return results[(page - 1) * 20:page * 20]
 
-    def __search_multi_tmdbinfos(self, title):
+    def __search_multi_tmdbinfos(self, title , include_adult=False):
         """
         同时查询模糊匹配的电影、电视剧TMDB信息
         """
         if not title:
             return []
         ret_infos = []
-        multis = self.search.multi({"query": title}) or []
+        multis = self.search.multi({"query": title, "include_adult": "true" if include_adult else "false"}) or []
         for multi in multis:
             if multi.get("media_type") in ["movie", "tv"]:
                 multi['media_type'] = MediaType.MOVIE if multi.get("media_type") == "movie" else MediaType.TV
                 ret_infos.append(multi)
         return ret_infos
 
-    def __search_movie_tmdbinfos(self, title, year):
+    def __search_movie_tmdbinfos(self, title, year, include_adult=False):
         """
         查询模糊匹配的所有电影TMDB信息
         """
@@ -575,9 +591,9 @@ class Media:
             return []
         ret_infos = []
         if year:
-            movies = self.search.movies({"query": title, "year": year}) or []
+            movies = self.search.movies({"query": title, "year": year, "include_adult": "true" if include_adult else "false"}) or []
         else:
-            movies = self.search.movies({"query": title}) or []
+            movies = self.search.movies({"query": title, "include_adult": "true" if include_adult else "false"}) or []
         for movie in movies:
             if title in movie.get("title"):
                 movie['media_type'] = MediaType.MOVIE

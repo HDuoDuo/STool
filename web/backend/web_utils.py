@@ -114,7 +114,7 @@ class WebUtils:
         return media_info
 
     @staticmethod
-    def search_media_infos(keyword, source=None, page=1):
+    def search_media_infos(keyword, source=None, page=1, include_adult=False):
         """
         搜索TMDB或豆瓣词条
         :param: keyword 关键字
@@ -142,7 +142,8 @@ class WebUtils:
             tmdbinfos = Media().get_tmdb_infos(title=meta_info.get_name(),
                                                year=meta_info.year,
                                                mtype=mtype,
-                                               page=page)
+                                               page=page,
+                                               include_adult=include_adult)
             medias = []
             for tmdbinfo in tmdbinfos:
                 tmp_info = MetaInfo(title=keyword)
