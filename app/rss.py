@@ -122,7 +122,7 @@ class Rss:
                     site_order = 100 - int(site_info.get("pri"))
                 else:
                     site_order = 0
-                rss_acticles = self.parse_rssxml(rss_url)
+                rss_acticles = self.parse_rssxml(rss_url, site_proxy)
                 if not rss_acticles:
                     log.warn(f"【Rss】{site_name} 未下载到数据")
                     continue
