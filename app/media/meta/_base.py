@@ -21,6 +21,8 @@ class MetaBase(object):
     subtitle = None
     # 类型 电影、电视剧
     type = None
+    # 是否adult
+    adult = False
     # 识别的中文名
     cn_name = None
     # 识别的英文名
@@ -52,7 +54,9 @@ class MetaBase(object):
     # 音频编码
     audio_encode = None
     # 二级分类
-    category = None
+    category = ""
+    # 内容类型
+    genre_ids = ""
     # TMDB ID
     tmdb_id = 0
     # IMDB ID
@@ -495,6 +499,8 @@ class MetaBase(object):
         self.tmdb_info = info
         self.vote_average = round(float(info.get('vote_average')), 1) if info.get('vote_average') else 0
         self.overview = info.get('overview')
+        self.adult = info.get('adult')
+        self.keyword = info.get('keyword')[0] if info.get('keyword') else None
         if self.type == MediaType.MOVIE:
             self.title = info.get('title')
             self.original_title = info.get('original_title')
@@ -521,7 +527,7 @@ class MetaBase(object):
         self.backdrop_path = TMDB_IMAGE_W500_URL % info.get('backdrop_path') if info.get(
             'backdrop_path') else ""
 
-    # 整合种了信息
+    # 整合种子信息
     def set_torrent_info(self,
                          site=None,
                          site_order=0,
@@ -531,6 +537,7 @@ class MetaBase(object):
                          size=0,
                          seeders=0,
                          peers=0,
+                         genre_ids=None,
                          description=None,
                          page_url=None,
                          upload_volume_factor=None,
@@ -555,6 +562,8 @@ class MetaBase(object):
             self.seeders = seeders
         if peers:
             self.peers = peers
+        if genre_ids:
+            self.genre_ids = genre_ids
         if description:
             self.description = description
         if page_url:

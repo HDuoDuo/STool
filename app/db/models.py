@@ -331,6 +331,7 @@ class SEARCHRESULTINFO(Base):
     TORRENT_NAME = Column(Text)
     ENCLOSURE = Column(Text)
     DESCRIPTION = Column(Text)
+    GENRE_IDS = Column(Text)
     TYPE = Column(Text)
     TITLE = Column(Text)
     YEAR = Column(Text)

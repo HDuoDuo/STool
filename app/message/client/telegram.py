@@ -6,7 +6,7 @@ import requests
 import log
 from app.helper import ThreadHelper
 from app.message.client._base import _IMessageClient
-from app.utils import RequestUtils, ExceptionUtils
+from app.utils import RequestUtils, ExceptionUtils, StringUtils
 from config import Config
 
 lock = Lock()
@@ -135,19 +135,28 @@ class Telegram(_IMessageClient):
             for media in medias:
                 if not image:
                     image = media.get_message_image()
-                if media.get_vote_string():
-                    caption = "%s\n%s. [%s](%s)\n%s，%s" % (caption,
-                                                           index,
-                                                           media.get_title_string(),
-                                                           media.get_detail_url(),
-                                                           media.get_type_string(),
-                                                           media.get_vote_string())
+                if title.find("添加下载") != -1:
+                    caption = "%s\n%s. [%s](%s)\n%s | %s | %s↑" % (caption,
+                                                                   index,
+                                                                   media.org_string,
+                                                                   media.page_url,
+                                                                   media.site,
+                                                                   StringUtils.str_filesize(int(media.size)),
+                                                                   media.seeders)
                 else:
-                    caption = "%s\n%s. [%s](%s)\n%s" % (caption,
-                                                        index,
-                                                        media.get_title_string(),
-                                                        media.get_detail_url(),
-                                                        media.get_type_string())
+                    if media.get_vote_string():
+                        caption = "%s\n%s. [%s](%s)\n%s，%s" % (caption,
+                                                                index,
+                                                                media.get_title_string(),
+                                                                media.get_detail_url(),
+                                                                media.get_type_string(),
+                                                                media.get_vote_string())
+                    else:
+                        caption = "%s\n%s. [%s](%s)\n%s" % (caption,
+                                                            index,
+                                                            media.get_title_string(),
+                                                            media.get_detail_url(),
+                                                            media.get_type_string())
                 index += 1
 
             if user_id:

@@ -34,6 +34,7 @@ class DbHelper:
                     TORRENT_NAME=media_item.org_string,
                     ENCLOSURE=media_item.enclosure,
                     DESCRIPTION=media_item.description,
+                    GENRE_IDS=media_item.genre_ids,
                     TYPE=mtype if ident_flag else '',
                     TITLE=media_item.title if ident_flag else title,
                     YEAR=media_item.year if ident_flag else '',

@@ -147,9 +147,6 @@ def search_medias_for_web(content, ident_flag=True, filters=None, tmdbid=None, m
                                               filter_args=filter_args,
                                               match_media=media_info,
                                               in_from=SearchType.WEB)
-    # 清空缓存结果
-    dbhepler = DbHelper()
-    dbhepler.delete_all_search_torrents()
     # 结束进度
     search_process.end('search')
     if len(media_list) == 0:
@@ -157,6 +154,9 @@ def search_medias_for_web(content, ident_flag=True, filters=None, tmdbid=None, m
         return 1, "%s 未检索到任何资源" % content
     else:
         log.info("【Web】共检索到 %s 个有效资源" % len(media_list))
+        # 清空缓存结果
+        dbhepler = DbHelper()
+        dbhepler.delete_all_search_torrents()
         # 插入数据库
         media_list = sorted(media_list, key=lambda x: "%s%s%s" % (str(x.res_order).rjust(3, '0'),
                                                                   str(x.site_order).rjust(3, '0'),
@@ -191,7 +191,7 @@ def search_media_by_message(input_str, in_from: SearchType, user_id, user_name=N
             Message().send_channel_msg(channel=in_from,
                                        title="输入有误！",
                                        user_id=user_id)
-            log.warn("【Web】错误的输入值：%s" % input_str)
+            log.warn("【Searcher】错误的输入值：%s" % input_str)
             return
         media_info = SEARCH_MEDIA_CACHE[user_id][choose]
         if not SEARCH_MEDIA_TYPE.get(user_id) \
@@ -223,6 +223,17 @@ def search_media_by_message(input_str, in_from: SearchType, user_id, user_name=N
                            media_info=media_info,
                            user_id=user_id,
                            user_name=user_name)
+        elif not SEARCH_MEDIA_TYPE.get(user_id) or SEARCH_MEDIA_TYPE.get(user_id) == "DOWNLOAD":
+            # 添加下载
+            ret, msg = Downloader().download(media_info=media_info)
+            if ret:
+                Message().send_channel_msg(channel=in_from,
+                                           title="%s下载成功" % media_info.org_string,
+                                           user_id=user_id)
+            else:
+                Message().send_channel_msg(channel=in_from,
+                                           title="%s下载失败，原因：%s" % (media_info.org_string, msg),
+                                           user_id=user_id)
         else:
             # 订阅
             __rss_media(in_from=in_from,
@@ -338,24 +349,22 @@ def search_media_by_message(input_str, in_from: SearchType, user_id, user_name=N
             } for dl in Downloader().get_download_setting().values()])
             if download_setting:
                 download_setting = download_setting[0]
-
-            # 识别媒体信息，列出匹配到的所有媒体
-            log.info("【Web】正在识别 %s 的媒体信息..." % content)
             if not content:
                 Message().send_channel_msg(channel=in_from,
                                            title="无法识别搜索内容！",
                                            user_id=user_id)
                 return
-
-            # 搜索名称
-            medias = WebUtils.search_media_infos(
-                keyword=content
-            )
+            # 识别媒体信息，列出匹配到的所有媒体
+            log.info("【Searcher】正在识别 %s 的媒体信息..." % content)
+            medias = WebUtils.search_media_infos(keyword=content, include_adult=True)
             if not medias:
-                # 查询不到媒体信息
-                Message().send_channel_msg(channel=in_from,
-                                           title="%s 查询不到媒体信息！" % content,
-                                           user_id=user_id)
+                media_info = MetaInfo(content)
+                media_info.title = content
+                media_info.keyword = content
+                __search_media(in_from=in_from,
+                               media_info=media_info,
+                               user_id=user_id,
+                               user_name=user_name)
                 return
 
             # 保存识别信息到临时结果中，由于消息长度限制只取前8条
@@ -413,6 +422,20 @@ def __search_media(in_from, media_info, user_id, user_name=None):
     """
     开始搜索和发送消息
     """
+    global SEARCH_MEDIA_TYPE
+    global SEARCH_MEDIA_CACHE
+
+    # adult配置关键字搜索
+    if media_info.adult:
+        if not media_info.keyword:
+            id_str = __get_id(media_info.title)
+            if id_str:
+                media_info.keyword = id_str
+            else:
+                media_info.set_tmdb_info(Media().get_tmdb_info(mtype=media_info.type, tmdbid=media_info.tmdb_id))
+            if not media_info.keyword:
+                media_info.keyword = media_info.title
+        media_info.title = media_info.keyword
     # 检查是否存在，电视剧返回不存在的集清单
     exist_flag, no_exists, messages = Downloader().check_exists_medias(meta_info=media_info)
     if messages:
@@ -422,15 +445,34 @@ def __search_media(in_from, media_info, user_id, user_name=None):
     # 已经存在
     if exist_flag:
         return
+    # 客户端查询条件
+    client_filter_name = Config().get_config('app').get('client_filter_name', "")
+    groupid = DbHelper().get_filter_groupid_by_name(client_filter_name)
+    filter_args = {"rule": groupid} if groupid else {}
 
+    if media_info.keyword:
+        _, key_word, season_num, episode_num, year, content = StringUtils.get_keyword_from_string(media_info.keyword)
+        if not key_word:
+            Message().send_channel_msg(channel=in_from,
+                                       title="%s 快速检索关键字有误！" % content,
+                                       user_id=user_id) 
+            return
+        filter = {
+            "season": season_num,
+            "episode": episode_num,
+            "year": year
+        }
+        # 添加客户端查询条件
+        filter_args.update(filter)
     # 开始检索
     Message().send_channel_msg(channel=in_from,
                                title="开始检索 %s ..." % media_info.title,
                                user_id=user_id)
-    search_result, no_exists, search_count, download_count = Searcher().search_one_media(media_info=media_info,
+    medias, search_result, no_exists, search_count, download_count = Searcher().search_one_media(media_info=media_info,
                                                                                          in_from=in_from,
                                                                                          no_exists=no_exists,
                                                                                          sites=media_info.search_sites,
+                                                                                         filters= filter_args,
                                                                                          user_name=user_name)
     # 没有搜索到数据
     if not search_count:
@@ -438,23 +480,24 @@ def __search_media(in_from, media_info, user_id, user_name=None):
                                    title="%s 未搜索到任何资源" % media_info.title,
                                    user_id=user_id)
     else:
-        # 搜索到了但是没开自动下载
-        if download_count is None:
-            Message().send_channel_msg(channel=in_from,
-                                       title="%s 共搜索到%s个资源，点击选择下载" % (media_info.title, search_count),
-                                       image=media_info.get_message_image(),
-                                       url="search",
-                                       user_id=user_id)
+        # 搜索到了但是没开自动下载或择优下载失败
+        if download_count is None and medias:
+            # 保存识别信息到临时结果中，由于消息长度限制只取前8条
+            SEARCH_MEDIA_CACHE[user_id] = medias[:8]
+            SEARCH_MEDIA_TYPE[user_id] = "DOWNLOAD"
+            Message().send_channel_list_msg(channel=in_from,
+                                            title="共检索到%s个资源，请回复对应序号添加下载" % len(SEARCH_MEDIA_CACHE[user_id]),
+                                            medias=SEARCH_MEDIA_CACHE[user_id],
+                                            user_id=user_id)
             return
         else:
             # 搜索到了但是没下载到数据
             if download_count == 0:
                 Message().send_channel_msg(channel=in_from,
-                                           title="%s 共搜索到%s个结果，但没有下载到任何资源" % (
-                                               media_info.title, search_count),
+                                           title="%s 共搜索到%s个结果，但没有下载到任何资源" % (media_info.title, search_count),
                                            user_id=user_id)
     # 没有下载完成，且打开了自动添加订阅
-    if not search_result and Config().get_config('pt').get('search_no_result_rss'):
+    if not search_result and not media_info.keyword and Config().get_config('pt').get('search_no_result_rss'):
         # 添加订阅
         __rss_media(in_from=in_from,
                     media_info=media_info,
@@ -498,3 +541,95 @@ def __rss_media(in_from, media_info, user_id=None, state='D', user_name=None):
             Message().send_channel_msg(channel=in_from,
                                        title="%s 添加订阅失败：%s" % (media_info.title, msg),
                                        user_id=user_id)
+            
+def __get_id(title_str: str) -> str:
+    """从给定的标题中提取番号（DVD ID）"""
+    ignored_id_pattern = Config().get_config('app').get('ignored_id_pattern', [])
+    ignore_pattern = re.compile('|'.join(ignored_id_pattern))
+    norm = ignore_pattern.sub('', title_str).upper()
+    if 'FC2' in norm:
+        # 根据FC2 Club的影片数据，FC2编号为5-7个数字
+        match = re.search(r'FC2[^A-Z\d]{0,5}(PPV[^A-Z\d]{0,5})?(\d{5,7})', norm, re.I)
+        if match:
+            return 'FC2-' + match.group(2)
+    elif 'HEYDOUGA' in norm:
+        match = re.search(r'(HEYDOUGA)[-_]*(\d{4})[-_]0?(\d{3,5})', norm, re.I)
+        if match:
+            return '-'.join(match.groups())
+    elif 'GETCHU' in norm:
+        match = re.search(r'GETCHU[-_]*(\d+)', norm, re.I)
+        if match:
+            return 'GETCHU-' + match.group(1)
+    elif 'GYUTTO' in norm:
+        match = re.search(r'GYUTTO-(\d+)', norm, re.I)
+        if match:
+            return 'GYUTTO-' + match.group(1)
+    elif '259LUXU' in norm: # special case having form of '259luxu'
+        match = re.search(r'259LUXU-(\d+)', norm, re.I)
+        if match:
+            return '259LUXU-' + match.group(1)
+
+    else:
+        # 先尝试移除可疑域名进行匹配，如果匹配不到再使用原始文件名进行匹配
+        no_domain = re.sub(r'\w{3,10}\.(COM|NET|APP|XYZ)', '', norm, flags=re.I)
+        if no_domain != norm:
+            avid = __get_id(no_domain)
+            if avid:
+                return avid
+        # 匹配缩写成hey的heydouga影片。由于番号分三部分，要先于后面分两部分的进行匹配
+        match = re.search(r'(?:HEY)[-_]*(\d{4})[-_]0?(\d{3,5})', norm, re.I)
+        if match:
+            return 'heydouga-' + '-'.join(match.groups())
+        # 匹配片商 MUGEN 的奇怪番号。由于MK3D2DBD的模式，要放在普通番号模式之前进行匹配
+        match = re.search(r'(MKB?D)[-_]*(S\d{2,3})|(MK3D2DBD|S2M|S2MBD)[-_]*(\d{2,3})', norm, re.I)
+        if match:
+            if match.group(1) is not None:
+                avid = match.group(1) + '-' + match.group(2)
+            else:
+                avid = match.group(3) + '-' + match.group(4)
+            return avid
+        # 匹配IBW这样带有后缀z的番号
+        match = re.search(r'(IBW)[-_](\d{2,5}z)', norm, re.I)
+        if match:
+            return match.group(1) + '-' + match.group(2)
+        # 普通番号，优先尝试匹配带分隔符的（如ABC-123）
+        match = re.search(r'([A-Z]{2,10})[-_](\d{2,5})', norm, re.I)
+        if match:
+            return match.group(1) + '-' + match.group(2)
+        # 普通番号，运行到这里时表明无法匹配到带分隔符的番号
+        # 先尝试匹配东热的red, sky, ex三个不带-分隔符的系列
+        # （这三个系列已停止更新，因此根据其作品编号将数字范围限制得小一些以降低误匹配概率）
+        match = re.search(r'(RED[01]\d\d|SKY[0-3]\d\d|EX00[01]\d)', norm, re.I)
+        if match:
+            return match.group(1)
+        # 然后再将影片视作缺失了-分隔符来匹配
+        match = re.search(r'([A-Z]{2,})(\d{2,5})', norm, re.I)
+        if match:
+            return match.group(1) + '-' + match.group(2)
+    # 尝试匹配TMA制作的影片（如'T28-557'，他家的番号很乱）
+    match = re.search(r'(T[23]8[-_]\d{3})', norm)
+    if match:
+        return match.group(1)
+    # 尝试匹配东热n, k系列
+    match = re.search(r'(N\d{4}|K\d{4})', norm, re.I)
+    if match:
+        return match.group(1)
+    # 尝试匹配R18-XXX的番号
+    match = re.search(r'R18-?\d{3}', norm, re.I)
+    if match:
+        return match.group(1)
+    # 尝试匹配纯数字番号（无码影片）
+    match = re.search(r'(\d{6}[-_]\d{2,3})', norm)
+    if match:
+        return match.group(1)
+    # 如果还是匹配不了，尝试将' '替换为'-'后再试，少部分影片的番号是由' '分隔的
+    if ' ' in norm:
+        avid1 = __get_id(norm.replace(' ', '-'))
+        if avid1:
+            return avid1
+    # 如果还是匹配不了，尝试将')('替换为'-'后再试，少部分影片的番号是由')('分隔的
+    if ')(' in norm:
+        avid2 = __get_id(norm.replace(')(', '-'))
+        if avid2:
+            return avid2
+    return ''

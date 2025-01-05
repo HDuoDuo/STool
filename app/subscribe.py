@@ -628,7 +628,7 @@ class Subscribe:
                 "rule": rss_info.get('filter_rule'),
                 "site": rss_info.get("search_sites")
             }
-            search_result, _, _, _ = self.searcher.search_one_media(
+            _, search_result, _, _, _ = self.searcher.search_one_media(
                 media_info=media_info,
                 in_from=SearchType.RSS,
                 no_exists=no_exists,
@@ -753,7 +753,7 @@ class Subscribe:
                 "rule": rss_info.get('filter_rule'),
                 "site": rss_info.get("search_sites")
             }
-            search_result, no_exists, _, _ = self.searcher.search_one_media(
+            _, search_result, no_exists, _, _ = self.searcher.search_one_media(
                 media_info=media_info,
                 in_from=SearchType.RSS,
                 no_exists=rss_no_exists,

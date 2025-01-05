@@ -67,13 +67,14 @@ class Searcher:
         :param sites: 检索哪些站点
         :param filters: 过滤条件，为空则不过滤
         :param user_name: 用户名
-        :return: 请求的资源是否全部下载完整，如完整则返回媒体信息
+        :return: 搜索到的资源
+                 请求的资源是否全部下载完整，如完整则返回媒体信息
                  请求的资源如果是剧集则返回下载后仍然缺失的季集信息
                  搜索到的结果数量
                  下载到的结果数量，如为None则表示未开启自动下载
         """
         if not media_info:
-            return None, {}, 0, 0
+            return None, None, {}, 0, 0
         # 进度计数重置
         self.progress.start('search')
         # 查找的季
@@ -132,7 +133,7 @@ class Searcher:
         log.info("【Searcher】开始检索 %s ..." % first_search_name)
         media_list = self.search_medias(key_word=first_search_name,
                                         filter_args=filter_args,
-                                        match_media=media_info,
+                                        match_media=None if media_info.keyword else media_info,
                                         in_from=in_from)
         # 使用名称重新搜索
         if len(media_list) == 0 \
@@ -146,22 +147,18 @@ class Searcher:
 
         if len(media_list) == 0:
             log.info("【Searcher】%s 未搜索到任何资源" % second_search_name)
-            return None, no_exists, 0, 0
+            return None, None, no_exists, 0, 0
         else:
             if in_from in self.message.get_search_types():
-                # 保存搜索记录
-                self.dbhelper.delete_all_search_torrents()
                 # 搜索结果排序
                 media_list = sorted(media_list, key=lambda x: "%s%s%s%s" % (str(x.title).ljust(100, ' '),
                                                                             str(x.res_order).rjust(3, '0'),
                                                                             str(x.site_order).rjust(3, '0'),
                                                                             str(x.seeders).rjust(10, '0')),
                                     reverse=True)
-                # 插入数据库
-                self.dbhelper.insert_search_results(media_list)
                 # 微信未开自动下载时返回
                 if not self._search_auto:
-                    return None, no_exists, len(media_list), None
+                    return media_list, None, no_exists, len(media_list), None
             # 择优下载
             download_items, left_medias = self.downloader.batch_download(in_from=in_from,
                                                                          media_list=media_list,
@@ -170,12 +167,12 @@ class Searcher:
             # 统计下载情况，下全了返回True，没下全返回False
             if not download_items:
                 log.info("【Searcher】%s 未下载到资源" % media_info.title)
-                return None, left_medias, len(media_list), 0
+                return None, None, left_medias, len(media_list), 0
             else:
                 log.info("【Searcher】实际下载了 %s 个资源" % len(download_items))
                 # 还有剩下的缺失，说明没下完，返回False
                 if left_medias:
-                    return None, left_medias, len(media_list), len(download_items)
+                    return None, None, left_medias, len(media_list), len(download_items)
                 # 全部下完了
                 else:
-                    return download_items[0], no_exists, len(media_list), len(download_items)
+                    return None, download_items[0], no_exists, len(media_list), len(download_items)

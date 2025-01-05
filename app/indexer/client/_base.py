@@ -130,6 +130,8 @@ class _IIndexClient(metaclass=ABCMeta):
                         continue
                     # 描述
                     description = DomUtils.tag_value(item, "description", default="")
+                    # 类别
+                    category = DomUtils.tag_value(item, "category", default="")
                     # 种子大小
                     size = DomUtils.tag_value(item, "size", default=0)
                     # 种子页面
@@ -170,6 +172,7 @@ class _IIndexClient(metaclass=ABCMeta):
                                 'title': title,
                                 'enclosure': enclosure,
                                 'description': description,
+                                'genre_ids': category,
                                 'size': size,
                                 'seeders': seeders,
                                 'peers': peers,
@@ -340,6 +343,7 @@ class _IIndexClient(metaclass=ABCMeta):
                                         size=size,
                                         seeders=seeders,
                                         peers=peers,
+                                        genre_ids=item.get('genre_ids'),
                                         description=description,
                                         page_url=page_url,
                                         upload_volume_factor=uploadvolumefactor,

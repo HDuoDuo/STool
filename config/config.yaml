@@ -50,10 +50,19 @@ app:
   user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36"
   # 【登录界面壁纸】：themoviedb、bing，设置为themoviedb时需要配置TMDB API Key时才生效
   wallpaper: bing
-  # rclone定时运行lsd来刷新token(day-hour-minute)为空时则不运行,day为0时每天按时分运行。
+  # rclone定时运行lsd来刷新token(day(用逗号隔开)-hour-minute),为空时不运行,不使用day时不能省略'-'即每天按时分运行。
   rclone_refresh:
+  # 客户端交互使用的过滤规则名称,不设置则使用默认规则
+  client_filter_name:
+  # 客户端交互搜索番号提取要忽略的正则表达式（如果不熟悉正则表达式，请不要修改此配置，否则可能严重影响提取效果）
+  ignored_id_pattern:
+    - '(144|240|360|480|720|1080)[Pp]'
+    - '[24][Kk]'
+    - '\w+2048\.com'
+    - 'Carib(beancom)?'
+    - '[^a-z\d](f?hd|lt)[^a-z\d]'
   # Debug mode
-  debug: true
+  debug: false
 
 # 【配置媒体库信息】
 media:
@@ -122,12 +131,11 @@ plex:
   username:
   # 【Plex用户密码】
   password:
-  # 【列表名称-列表定时转移时间-列表云盘存放路径】
+  # 【列表名称-列表定时转移时间(hour:minutes为空则不启用)-original_path为宿主机的目录-container_path为映射后在容器中的目录】
   playListName: 
-  transfer_plex_cron: 1:01
-  move_path: 
-  # 【未识别云盘路径（可选），默认'[move_path]/noscrapy'】
-  noscrapy_path:
+  transfer_plex_cron:
+  original_path: 
+  container_path:
   # 【转移模式】link、copy、softlink、move、rclone、rclonecopy、minio、miniocopy(默认)，详情参考顶部说明
   move_mode: rclonecopy
   # 【pt路径关键字，移动删除文件的时候排除正在做种的文件】

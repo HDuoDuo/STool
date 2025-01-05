@@ -474,8 +474,8 @@ class WebAction:
                                    size=res.SIZE,
                                    site=res.SITE,
                                    page_url=res.PAGEURL,
-                                   upload_volume_factor=float(
-                                       res.UPLOAD_VOLUME_FACTOR),
+                                   genre_ids=res.GENRE_IDS,
+                                   upload_volume_factor=float(res.UPLOAD_VOLUME_FACTOR),
                                    download_volume_factor=float(res.DOWNLOAD_VOLUME_FACTOR))
             # 添加下载
             ret, ret_msg = Downloader().download(media_info=media,

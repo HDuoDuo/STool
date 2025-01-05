@@ -5,7 +5,7 @@ import log
 from app.conf import ModuleConf
 from app.filetransfer import FileTransfer
 from app.helper import DbHelper, ThreadHelper, SubmoduleHelper
-from app.media import Media
+from app.media import Media, Category
 from app.media.meta import MetaInfo
 from app.mediaserver import MediaServer
 from app.message import Message
@@ -988,24 +988,36 @@ class Downloader:
         """
         根据媒体信息读取一个下载目录的信息
         """
-        if media and media.tmdb_info:
-            for attr in self._downloaddir or []:
-                if not attr:
-                    continue
-                if attr.get("type") and attr.get("type") != media.type.value:
-                    continue
-                if attr.get("category") and attr.get("category") != media.category:
-                    continue
-                if not attr.get("save_path") and not attr.get("label"):
-                    continue
-                if (attr.get("container_path") or attr.get("save_path")) \
-                        and os.path.exists(attr.get("container_path") or attr.get("save_path")) \
-                        and media.size \
-                        and float(SystemUtils.get_free_space_gb(attr.get("container_path") or attr.get("save_path"))) \
-                        < float(int(StringUtils.num_filesize(media.size)) / 1024 / 1024 / 1024):
-                    continue
-                return {"path": attr.get("save_path"), "label": attr.get("label")}
-        return {"path": None, "label": None}
+        dir_info = {"path": None, "label": None}
+        if media and (media.category or media.genre_ids):
+            if not media.category:
+                genre_ids_dict = {'genre_ids': media.genre_ids}
+                category_handler = Category()
+                if media.type == MediaType.MOVIE:
+                    media.category = category_handler.get_movie_category(genre_ids_dict)
+                elif media.type == MediaType.TV:
+                    media.category = category_handler.get_tv_category(genre_ids_dict)
+                else:
+                    media.category = category_handler.get_anime_category(genre_ids_dict)
+            if media.category:
+                for attr in self._downloaddir or []:
+                    if not attr:
+                        continue
+                    if attr.get("type") and attr.get("type") != media.type.value:
+                        continue
+                    if attr.get("category") and attr.get("category") != media.category:
+                        continue
+                    if not attr.get("save_path") and not attr.get("label"):
+                        continue
+                    if (attr.get("container_path") or attr.get("save_path")) \
+                            and os.path.exists(attr.get("container_path") or attr.get("save_path")) \
+                            and media.size \
+                            and float(SystemUtils.get_free_space_gb(attr.get("container_path") or attr.get("save_path"))) \
+                            < float(int(StringUtils.num_filesize(media.size)) / 1024 / 1024 / 1024):
+                        continue
+                    dir_info.update({"path": attr.get("save_path"), "label": attr.get("label")})
+                    break
+        return dir_info
 
     def get_default_client_type(self):
         """
