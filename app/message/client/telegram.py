@@ -135,7 +135,7 @@ class Telegram(_IMessageClient):
             for media in medias:
                 if not image:
                     image = media.get_message_image()
-                if title.find("添加下载") != -1:
+                if title.find("回复序号下载") != -1:
                     caption = "%s\n%s. [%s](%s)\n%s | %s | %s↑" % (caption,
                                                                    index,
                                                                    media.org_string,

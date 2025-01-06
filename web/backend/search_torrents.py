@@ -189,7 +189,7 @@ def search_media_by_message(input_str, in_from: SearchType, user_id, user_name=N
         if not SEARCH_MEDIA_CACHE.get(user_id) or \
                 choose < 0 or choose >= len(SEARCH_MEDIA_CACHE.get(user_id)):
             Message().send_channel_msg(channel=in_from,
-                                       title="输入有误！",
+                                       title="输入错误",
                                        user_id=user_id)
             log.warn("【Searcher】错误的输入值：%s" % input_str)
             return
@@ -215,7 +215,7 @@ def search_media_by_message(input_str, in_from: SearchType, user_id, user_name=N
                     media_info.begin_episode = search_episode
                 if not media_info or not media_info.tmdb_info:
                     Message().send_channel_msg(channel=in_from,
-                                               title="%s 从TMDB查询不到媒体信息！" % _title,
+                                               title="【%s】从TMDB查询不到媒体信息" % _title,
                                                user_id=user_id)
                     return
             # 搜索
@@ -228,11 +228,11 @@ def search_media_by_message(input_str, in_from: SearchType, user_id, user_name=N
             ret, msg = Downloader().download(media_info=media_info)
             if ret:
                 Message().send_channel_msg(channel=in_from,
-                                           title="%s下载成功" % media_info.org_string,
+                                           title="【%s】下载成功" % media_info.org_string,
                                            user_id=user_id)
             else:
                 Message().send_channel_msg(channel=in_from,
-                                           title="%s下载失败，原因：%s" % (media_info.org_string, msg),
+                                           title="【%s】下载失败：%s" % (media_info.org_string, msg),
                                            user_id=user_id)
         else:
             # 订阅
@@ -313,7 +313,7 @@ def search_media_by_message(input_str, in_from: SearchType, user_id, user_name=N
                                                 can_item=meta_info)
             else:
                 Message().send_channel_msg(channel=in_from,
-                                           title=f"添加下载失败，{retmsg}",
+                                           title=f"下载失败：{retmsg}",
                                            user_id=user_id)
 
         # 搜索或订阅
@@ -351,23 +351,20 @@ def search_media_by_message(input_str, in_from: SearchType, user_id, user_name=N
                 download_setting = download_setting[0]
             if not content:
                 Message().send_channel_msg(channel=in_from,
-                                           title="无法识别搜索内容！",
+                                           title="无法识别内容",
                                            user_id=user_id)
                 return
             # 识别媒体信息，列出匹配到的所有媒体
-            log.info("【Searcher】正在识别 %s 的媒体信息..." % content)
+            log.info("【Searcher】正在识别 %s 的媒体信息" % content)
             medias = WebUtils.search_media_infos(keyword=content, include_adult=True)
-            if not medias:
+            if not SEARCH_MEDIA_TYPE.get(user_id) or SEARCH_MEDIA_TYPE.get(user_id) == "SEARCH":
                 media_info = MetaInfo(content)
                 media_info.title = content
                 media_info.keyword = content
-                __search_media(in_from=in_from,
-                               media_info=media_info,
-                               user_id=user_id,
-                               user_name=user_name)
-                return
-
-            # 保存识别信息到临时结果中，由于消息长度限制只取前8条
+                # 由于消息长度限制,取前7条并在最后拼接一个关键字检索共8条
+                medias = medias[:7]
+                medias.append(media_info)
+            # 保存识别信息到临时结果
             SEARCH_MEDIA_CACHE[user_id] = []
             for meta_info in medias[:8]:
                 # 合并站点和下载设置信息
@@ -376,44 +373,20 @@ def search_media_by_message(input_str, in_from: SearchType, user_id, user_name=N
                 meta_info.set_download_info(download_setting=download_setting)
                 SEARCH_MEDIA_CACHE[user_id].append(meta_info)
 
-            if 1 == len(SEARCH_MEDIA_CACHE[user_id]):
-                # 只有一条数据，直接开始搜索
+            if 1 == len(SEARCH_MEDIA_CACHE[user_id]) and \
+                    (not SEARCH_MEDIA_TYPE.get(user_id) or SEARCH_MEDIA_TYPE.get(user_id) == "SEARCH"):
+                # 只有一条数据是没有搜索到媒体信息，直接检索资源
                 media_info = SEARCH_MEDIA_CACHE[user_id][0]
-                if not SEARCH_MEDIA_TYPE.get(user_id) \
-                        or SEARCH_MEDIA_TYPE.get(user_id) == "SEARCH":
-                    # 如果是豆瓣数据，需要重新查询TMDB的数据
-                    if media_info.douban_id:
-                        _title = media_info.get_title_string()
-                        media_info = Media().get_media_info(title="%s %s" % (media_info.title, media_info.year),
-                                                            mtype=media_info.type, strict=True)
-                        if not media_info or not media_info.tmdb_info:
-                            Message().send_channel_msg(channel=in_from,
-                                                       title="%s 从TMDB查询不到媒体信息！" % _title,
-                                                       user_id=user_id)
-                            return
-                    # 发送消息
-                    Message().send_channel_msg(channel=in_from,
-                                               title=media_info.get_title_vote_string(),
-                                               text=media_info.get_overview_string(),
-                                               image=media_info.get_message_image(),
-                                               url=media_info.get_detail_url(),
-                                               user_id=user_id)
-                    # 开始搜索
-                    __search_media(in_from=in_from,
-                                   media_info=media_info,
-                                   user_id=user_id,
-                                   user_name=user_name)
-                else:
-                    # 添加订阅
-                    __rss_media(in_from=in_from,
+                __search_media(in_from=in_from,
                                 media_info=media_info,
                                 user_id=user_id,
                                 user_name=user_name)
             else:
                 # 发送消息通知选择
+                media_type = "搜索" if SEARCH_MEDIA_TYPE.get(user_id) == "SEARCH" else "订阅"
                 Message().send_channel_list_msg(channel=in_from,
-                                                title="共找到%s条相关信息，请回复对应序号" % len(
-                                                    SEARCH_MEDIA_CACHE[user_id]),
+                                                title="识别到%s条信息，回复序号%s" % (len(SEARCH_MEDIA_CACHE[user_id]), media_type) \
+                                                    if SEARCH_MEDIA_CACHE[user_id] else "未能识别到媒体信息",
                                                 medias=SEARCH_MEDIA_CACHE[user_id],
                                                 user_id=user_id)
 
@@ -454,7 +427,7 @@ def __search_media(in_from, media_info, user_id, user_name=None):
         _, key_word, season_num, episode_num, year, content = StringUtils.get_keyword_from_string(media_info.keyword)
         if not key_word:
             Message().send_channel_msg(channel=in_from,
-                                       title="%s 快速检索关键字有误！" % content,
+                                       title="【%s】中获取检索关键字失败" % content,
                                        user_id=user_id) 
             return
         filter = {
@@ -466,7 +439,7 @@ def __search_media(in_from, media_info, user_id, user_name=None):
         filter_args.update(filter)
     # 开始检索
     Message().send_channel_msg(channel=in_from,
-                               title="开始检索 %s ..." % media_info.title,
+                               title="正在检索【%s】" % media_info.title,
                                user_id=user_id)
     medias, search_result, no_exists, search_count, download_count = Searcher().search_one_media(media_info=media_info,
                                                                                          in_from=in_from,
@@ -477,7 +450,7 @@ def __search_media(in_from, media_info, user_id, user_name=None):
     # 没有搜索到数据
     if not search_count:
         Message().send_channel_msg(channel=in_from,
-                                   title="%s 未搜索到任何资源" % media_info.title,
+                                   title="【%s】未检索到资源" % media_info.title,
                                    user_id=user_id)
     else:
         # 搜索到了但是没开自动下载或择优下载失败
@@ -486,7 +459,7 @@ def __search_media(in_from, media_info, user_id, user_name=None):
             SEARCH_MEDIA_CACHE[user_id] = medias[:8]
             SEARCH_MEDIA_TYPE[user_id] = "DOWNLOAD"
             Message().send_channel_list_msg(channel=in_from,
-                                            title="共检索到%s个资源，请回复对应序号添加下载" % len(SEARCH_MEDIA_CACHE[user_id]),
+                                            title="检索到%s个资源，回复序号下载" % len(SEARCH_MEDIA_CACHE[user_id]),
                                             medias=SEARCH_MEDIA_CACHE[user_id],
                                             user_id=user_id)
             return
@@ -494,7 +467,7 @@ def __search_media(in_from, media_info, user_id, user_name=None):
             # 搜索到了但是没下载到数据
             if download_count == 0:
                 Message().send_channel_msg(channel=in_from,
-                                           title="%s 共搜索到%s个结果，但没有下载到任何资源" % (media_info.title, search_count),
+                                           title="【%s】检索到%s个资源，但未下载" % (media_info.title, search_count),
                                            user_id=user_id)
     # 没有下载完成，且打开了自动添加订阅
     if not search_result and not media_info.keyword and Config().get_config('pt').get('search_no_result_rss'):
@@ -510,6 +483,7 @@ def __rss_media(in_from, media_info, user_id=None, state='D', user_name=None):
     """
     开始添加订阅和发送消息
     """
+    title = media_info.title
     # 添加订阅
     if media_info.douban_id:
         code, msg, media_info = Subscribe().add_rss_subscribe(mtype=media_info.type,
@@ -536,10 +510,10 @@ def __rss_media(in_from, media_info, user_id=None, state='D', user_name=None):
             Message().send_rss_success_message(in_from=in_from,
                                                media_info=media_info)
     else:
+        log.info("【Web】%s 添加订阅失败：%s" % (title, msg))
         if in_from in Message().get_search_types():
-            log.info("【Web】%s 添加订阅失败：%s" % (media_info.title, msg))
             Message().send_channel_msg(channel=in_from,
-                                       title="%s 添加订阅失败：%s" % (media_info.title, msg),
+                                       title="【%s】添加订阅失败：%s" % (title, msg),
                                        user_id=user_id)
             
 def __get_id(title_str: str) -> str:
