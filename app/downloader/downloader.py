@@ -258,7 +258,6 @@ class Downloader:
                 indexers = Indexer().get_indexers()
                 if indexerName in [indexer.name for indexer in indexers if indexer.public]:
                     tags.append('PUBLIC')
-                    log.info("【Downloader】因%s为公共站点而添加PUBLIC标签" % indexerName)
             # 添加下载
             print_url = content if isinstance(content, str) else url
             if is_paused:
@@ -271,6 +270,8 @@ class Downloader:
                                              download_dir=download_dir,
                                              cookie=site_info.get("cookie"))
                 if ret:
+                    # 把媒体二级目录category添加到labels标签中便于TR客户端管理
+                    tags.append(media_info.category)
                     downloader.change_torrent(tid=ret.id,
                                               tag=tags,
                                               upload_limit=upload_limit,

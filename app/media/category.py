@@ -137,7 +137,7 @@ class Category:
         for key, item in categorys.items():
             if not item:
                 return key
-            match_flag = True
+            match_flag = False
             for attr, value in item.items():
                 if not value:
                     continue
@@ -158,8 +158,8 @@ class Category:
                 else:
                     values = [str(value).upper()]
 
-                if not set(values).intersection(set(info_values)):
-                    match_flag = False
+                if set(values).intersection(set(info_values)):
+                    match_flag = True; break
             if match_flag:
                 return key
         return ""
