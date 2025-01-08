@@ -151,10 +151,9 @@ class Searcher:
         else:
             if in_from in self.message.get_search_types():
                 # 搜索结果排序
-                media_list = sorted(media_list, key=lambda x: "%s%s%s%s" % (str(x.title).ljust(100, ' '),
-                                                                            str(x.res_order).rjust(3, '0'),
-                                                                            str(x.site_order).rjust(3, '0'),
-                                                                            str(x.seeders).rjust(10, '0')),
+                media_list = sorted(media_list, key=lambda x: "%s%s%s" % (str(x.seeders).rjust(10, '0'),
+                                                                          str(x.res_order).rjust(3, '0'),
+                                                                          str(x.site_order).rjust(3, '0')),
                                     reverse=True)
                 # 微信未开自动下载时返回
                 if not self._search_auto:
