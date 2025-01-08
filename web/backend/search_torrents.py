@@ -355,8 +355,13 @@ def search_media_by_message(input_str, in_from: SearchType, user_id, user_name=N
                                            user_id=user_id)
                 return
             # 识别媒体信息，列出匹配到的所有媒体
-            log.info("【Searcher】正在识别 %s 的媒体信息" % content)
-            medias = WebUtils.search_media_infos(keyword=content, include_adult=True)
+            try:
+                medias = WebUtils.search_media_infos(keyword=content, include_adult=True)
+            except Exception as e:
+                Message().send_channel_msg(channel=in_from,
+                                           title="识别【%s】媒体信息失败：%s" % (content, e),
+                                           user_id=user_id)
+                return
             if not SEARCH_MEDIA_TYPE.get(user_id) or SEARCH_MEDIA_TYPE.get(user_id) == "SEARCH":
                 media_info = MetaInfo(content)
                 media_info.title = content
